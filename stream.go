@@ -5,7 +5,7 @@ import (
 )
 
 type ChannelStream struct {
-	dataChannel chan <- Result
+	dataChannel chan Result
 	workers int
 	ape actionPerError
 	optionFuncs []OptionFunc
@@ -24,11 +24,11 @@ const (
 	stop = 1
 )
 
-type SeedFunc func() chan <- Result
+type SeedFunc func(seedChan chan <- Result)
 type PipeFunc func(result Result) Result
 type HarvestFunc func(result Result)
 
-type OptionFunc func(cs *ChannelStream)
+type OptionFunc func(cs *ChannelStream) func()
 
 func NewChannelStream(seedFunc SeedFunc, optionFuncs ...OptionFunc) *ChannelStream {
 	cs := &ChannelStream{
@@ -38,19 +38,23 @@ func NewChannelStream(seedFunc SeedFunc, optionFuncs ...OptionFunc) *ChannelStre
 	}
 
 	for _, of := range optionFuncs {
-		of(cs)
+		of(cs)()
 	}
 
 	go func() {
-		inputChan := seedFunc()
+		inputChan := make(chan Result, 4)
+
+		go seedFunc(inputChan)
+
 		for res := range inputChan {
-			if res.Err != nil{
+			if !cs.hasError && res.Err != nil{
 				cs.hasError = true
 			}
 
 			if cs.hasError && cs.ape == stop {
-				break
+				continue
 			}
+
 			cs.dataChannel <- res
 		}
 		close(cs.dataChannel)
@@ -59,21 +63,20 @@ func NewChannelStream(seedFunc SeedFunc, optionFuncs ...OptionFunc) *ChannelStre
 	return cs
 }
 
-func (p *ChannelStream) StopWhenHasError() func() {
+func StopWhenHasError(p *ChannelStream) func() {
 	return func() {
 		p.ape = stop
 	}
 }
 
-func (p *ChannelStream) ResumeWhenHasError() func() {
+func ResumeWhenHasError(p *ChannelStream) func() {
 	return func() {
 		p.ape = resume
 	}
 }
 
 func (p *ChannelStream) Pipe(dataPipeFunc PipeFunc) *ChannelStream {
-	seedFunc := func() chan <- Result{
-		var dataPipeChannel = make(chan Result, 4)
+	seedFunc := func(dataPipeChannel chan <- Result) {
 		wg := &sync.WaitGroup{}
 		wg.Add(p.workers)
 		for i:=0; i < p.workers; i++{
@@ -89,14 +92,13 @@ func (p *ChannelStream) Pipe(dataPipeFunc PipeFunc) *ChannelStream {
 			wg.Wait()
 			close(dataPipeChannel)
 		}()
-		return  dataPipeChannel
 	}
 
 	return NewChannelStream(seedFunc, p.optionFuncs...)
 }
 
 func (p *ChannelStream) Done(harvestFunc HarvestFunc) {
-	for result := range p.dataChannel{
+	for result := range p.dataChannel {
 		harvestFunc(result)
 	}
 }
