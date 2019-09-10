@@ -29,7 +29,7 @@ func TestChannelStream_SecondPipe_StopWhenHasError(t *testing.T) {
 	}, StopWhenHasError(), SetWorkers(2))
 
 	harvestResult := 0
-	stream2.Wait(func(result Result) {
+	stream2.Harvest(func(result Result) {
 		if result.Err == nil {
 			i := result.Data.(int)
 			fmt.Println("har", i)
@@ -67,7 +67,7 @@ func TestChannelStream_Race(t *testing.T) {
 	fmt.Println(error)
 }
 
-func TestChannelStream_Wait_StopWhenHasError(t *testing.T) {
+func TestChannelStream_Harvest_StopWhenHasError(t *testing.T) {
 	stream := NewChannelStream(func(seedChan chan<- Result) {
 		for i := 1; i <= 10; i++ {
 			if i %2 == 1 {
@@ -80,7 +80,7 @@ func TestChannelStream_Wait_StopWhenHasError(t *testing.T) {
 	}, StopWhenHasError())
 
 	harvestResult := 0
-	stream.Wait(func(result Result) {
+	stream.Harvest(func(result Result) {
 		if result.Err == nil {
 			i := result.Data.(int)
 			harvestResult += i
@@ -90,7 +90,7 @@ func TestChannelStream_Wait_StopWhenHasError(t *testing.T) {
 	fmt.Println(harvestResult)
 }
 
-func TestChannelStream_Wait_ResumeWhenHasError(t *testing.T) {
+func TestChannelStream_Harvest_ResumeWhenHasError(t *testing.T) {
 	stream := NewChannelStream(func(seedChan chan<- Result) {
 		for i := 1; i <= 10; i++ {
 			if i %2 == 1 {
@@ -103,7 +103,7 @@ func TestChannelStream_Wait_ResumeWhenHasError(t *testing.T) {
 	}, ResumeWhenHasError())
 
 	harvestResult := 0
-	stream.Wait(func(result Result) {
+	stream.Harvest(func(result Result) {
 		if result.Err == nil {
 			i := result.Data.(int)
 			harvestResult += i
@@ -132,7 +132,7 @@ func TestChannelStream_Pipe_Twice(t *testing.T) {
 	})
 
 	harvestResult := 0
-	stream3.Wait(func(result Result) {
+	stream3.Harvest(func(result Result) {
 		i := result.Data.(int)
 		harvestResult += i
 	})
@@ -153,7 +153,7 @@ func TestChannelStream_Pipe(t *testing.T) {
 	})
 
 	harvestResult := 0
-	stream2.Wait(func(result Result) {
+	stream2.Harvest(func(result Result) {
 		i := result.Data.(int)
 		harvestResult += i
 	})
@@ -170,7 +170,7 @@ func TestChannelStream_Wait(t *testing.T) {
 	})
 
 	harvestResult := 0
-	stream.Wait(func(result Result) {
+	stream.Harvest(func(result Result) {
 		i := result.Data.(int)
 		harvestResult += i
 	})

@@ -146,7 +146,7 @@ func (p *ChannelStream) Race(raceFunc RaceFunc) {
 	}()
 }
 
-func (p *ChannelStream) Wait(harvestFunc HarvestFunc) (bool, []error) {
+func (p *ChannelStream) Harvest(harvestFunc HarvestFunc) (bool, []error) {
 	for result := range p.dataChannel {
 		harvestFunc(result)
 	}
