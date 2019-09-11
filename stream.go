@@ -192,8 +192,7 @@ func (p *ChannelStream) Race(ctx context.Context, raceFunc RaceFunc) {
 	}
 
 	go func() {
-		for range p.dataChannel {
-		}
+		p.Drain()
 	}()
 }
 
