@@ -170,13 +170,14 @@ func safeCloseChannel(dataPipeChannel chan<- Result) {
 	if len(dataPipeChannel) == 0 {
 		close(dataPipeChannel)
 	} else {
-		ticker := time.Tick(1 * time.Millisecond)
-		for range ticker {
+		ticker := time.NewTicker(1 * time.Millisecond)
+		for range ticker.C {
 			if len(dataPipeChannel) == 0 {
 				close(dataPipeChannel)
 				break
 			}
 		}
+		ticker.Stop()
 	}
 }
 
