@@ -1,4 +1,5 @@
 # channelx
+[![Go Report Card](https://goreportcard.com/badge/github.com/Ksloveyuan/channelx)](https://goreportcard.com/report/github.com/Ksloveyuan/channelx)
 
 before
 ```golang
