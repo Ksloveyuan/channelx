@@ -7,7 +7,7 @@ import (
 )
 
 type ChannelStream struct {
-	dataChannel chan Result
+	dataChannel chan Item
 	workers     int
 	ape         actionPerError
 	optionFuncs []OptionFunc
@@ -16,7 +16,7 @@ type ChannelStream struct {
 	quitChan    chan struct{}
 }
 
-type Result struct {
+type Item struct {
 	Data interface{}
 	Err  error
 }
@@ -28,10 +28,10 @@ const (
 	stop                  = 1
 )
 
-type SeedFunc func(seedChan chan<- Result, quitChannel chan struct{})
-type PipeFunc func(result Result) Result
-type HarvestFunc func(result Result)
-type RaceFunc func(result Result) bool
+type SeedFunc func(seedChan chan<- Item, quitChannel chan struct{})
+type PipeFunc func(item Item) Item
+type HarvestFunc func(item Item)
+type RaceFunc func(item Item) bool
 type OptionFunc func(cs *ChannelStream)
 
 func NewChannelStream(seedFunc SeedFunc, optionFuncs ...OptionFunc) *ChannelStream {
@@ -48,10 +48,10 @@ func NewChannelStream(seedFunc SeedFunc, optionFuncs ...OptionFunc) *ChannelStre
 		cs.quitChan = make(chan struct{})
 	}
 
-	cs.dataChannel = make(chan Result, cs.workers)
+	cs.dataChannel = make(chan Item, cs.workers)
 
 	go func() {
-		inputChan := make(chan Result)
+		inputChan := make(chan Item)
 
 		go seedFunc(inputChan, cs.quitChan)
 
@@ -125,7 +125,7 @@ func passByQuitChan(quitChan chan struct{}) func(p *ChannelStream) {
 }
 
 func (p *ChannelStream) Pipe(dataPipeFunc PipeFunc, optionFuncs ...OptionFunc) *ChannelStream {
-	seedFunc := func(dataPipeChannel chan<- Result, quitChannel chan struct{}) {
+	seedFunc := func(dataPipeChannel chan<- Item, quitChannel chan struct{}) {
 		wg := &sync.WaitGroup{}
 		wg.Add(p.workers)
 		for i := 0; i < p.workers; i++ {
@@ -167,7 +167,7 @@ func (p *ChannelStream) Pipe(dataPipeFunc PipeFunc, optionFuncs ...OptionFunc) *
 	return NewChannelStream(seedFunc, mergeOptionFuncs...)
 }
 
-func safeCloseChannel(dataPipeChannel chan<- Result) {
+func safeCloseChannel(dataPipeChannel chan<- Item) {
 	if len(dataPipeChannel) == 0 {
 		close(dataPipeChannel)
 	} else {
@@ -196,8 +196,8 @@ func (p *ChannelStream) Cancel() {
 
 func (p *ChannelStream) Race(raceFunc RaceFunc) {
 loop:
-	for result := range p.dataChannel {
-		if raceFunc(result) {
+	for item := range p.dataChannel {
+		if raceFunc(item) {
 			p.Cancel()
 			break loop
 		}
@@ -209,8 +209,8 @@ loop:
 }
 
 func (p *ChannelStream) Harvest(harvestFunc HarvestFunc) (bool, []error) {
-	for result := range p.dataChannel {
-		harvestFunc(result)
+	for item := range p.dataChannel {
+		harvestFunc(item)
 	}
 
 	return !p.hasError, p.errors
