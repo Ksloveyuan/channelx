@@ -13,7 +13,7 @@ type ChannelStream struct {
 	optionFuncs []OptionFunc
 	hasError    bool
 	errors      []error
-	quitChan chan struct{}
+	quitChan    chan struct{}
 }
 
 type Result struct {
@@ -124,9 +124,8 @@ func passByQuitChan(quitChan chan struct{}) func(p *ChannelStream) {
 	}
 }
 
-
 func (p *ChannelStream) Pipe(dataPipeFunc PipeFunc, optionFuncs ...OptionFunc) *ChannelStream {
-	seedFunc := func(dataPipeChannel chan<- Result,quitChannel chan struct{}) {
+	seedFunc := func(dataPipeChannel chan<- Result, quitChannel chan struct{}) {
 		wg := &sync.WaitGroup{}
 		wg.Add(p.workers)
 		for i := 0; i < p.workers; i++ {
@@ -160,7 +159,7 @@ func (p *ChannelStream) Pipe(dataPipeFunc PipeFunc, optionFuncs ...OptionFunc) *
 		}()
 	}
 
-	mergeOptionFuncs := make([]OptionFunc, len(p.optionFuncs)+len(optionFuncs) + 1)
+	mergeOptionFuncs := make([]OptionFunc, len(p.optionFuncs)+len(optionFuncs)+1)
 	copy(mergeOptionFuncs[0:len(p.optionFuncs)], p.optionFuncs)
 	copy(mergeOptionFuncs[len(p.optionFuncs):], optionFuncs)
 	mergeOptionFuncs[len(p.optionFuncs)+len(optionFuncs)] = passByQuitChan(p.quitChan)
@@ -185,8 +184,8 @@ func safeCloseChannel(dataPipeChannel chan<- Result) {
 
 func (p *ChannelStream) Cancel() {
 	select {
-	case _, ok :=<- p.quitChan:
-		if ok{
+	case _, ok := <-p.quitChan:
+		if ok {
 			close(p.quitChan)
 		}
 	default:
@@ -196,7 +195,7 @@ func (p *ChannelStream) Cancel() {
 }
 
 func (p *ChannelStream) Race(raceFunc RaceFunc) {
-	loop:
+loop:
 	for result := range p.dataChannel {
 		if raceFunc(result) {
 			p.Cancel()

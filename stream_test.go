@@ -3,9 +3,9 @@ package channelx
 import (
 	"fmt"
 	"github.com/pkg/errors"
+	"sync"
 	"testing"
 	"time"
-	"sync"
 )
 
 func TestChannelStream_SecondPipe_StopWhenHasError(t *testing.T) {
@@ -34,7 +34,6 @@ func TestChannelStream_SecondPipe_StopWhenHasError(t *testing.T) {
 		close(seedChan)
 		fmt.Println("seed finished")
 	}, SetWorkers(1))
-
 
 	stream2 := stream.Pipe(func(result Result) Result {
 		if result.Err == nil {
@@ -84,7 +83,7 @@ func TestChannelStream_Cancel_ByCloseExplicitly(t *testing.T) {
 			case seedChan <- result:
 			}
 
-			if i == 5{
+			if i == 5 {
 				close(quitChannel)
 			}
 		}
@@ -96,7 +95,7 @@ func TestChannelStream_Cancel_ByCloseExplicitly(t *testing.T) {
 	_, errs := stream.Harvest(func(result Result) {
 		fmt.Println("harvest", result)
 		if result.Err == nil {
-			if i,ok := result.Data.(int); ok{
+			if i, ok := result.Data.(int); ok {
 				harvestResult += i
 			}
 		}
@@ -141,7 +140,7 @@ func TestChannelStream_Cancel(t *testing.T) {
 	_, errs := stream.Harvest(func(result Result) {
 		fmt.Println("harvest", result)
 		if result.Err == nil {
-			if i,ok := result.Data.(int); ok{
+			if i, ok := result.Data.(int); ok {
 				harvestResult += i
 			}
 		}
