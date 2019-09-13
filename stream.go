@@ -1,7 +1,6 @@
 package channelutil
 
 import (
-	"context"
 	"runtime"
 	"sync"
 	"time"
@@ -14,6 +13,7 @@ type ChannelStream struct {
 	optionFuncs []OptionFunc
 	hasError    bool
 	errors      []error
+	quitChan chan struct{}
 }
 
 type Result struct {
@@ -28,14 +28,13 @@ const (
 	stop                  = 1
 )
 
-type SeedFunc func(seedChan chan<- Result)
+type SeedFunc func(seedChan chan<- Result, quitChannel chan struct{})
 type PipeFunc func(result Result) Result
 type HarvestFunc func(result Result)
 type RaceFunc func(result Result) bool
-
 type OptionFunc func(cs *ChannelStream)
 
-func NewChannelStream(ctx context.Context, seedFunc SeedFunc, optionFuncs ...OptionFunc) *ChannelStream {
+func NewChannelStream(seedFunc SeedFunc, optionFuncs ...OptionFunc) *ChannelStream {
 	cs := &ChannelStream{
 		workers:     runtime.NumCPU(),
 		optionFuncs: optionFuncs,
@@ -45,40 +44,32 @@ func NewChannelStream(ctx context.Context, seedFunc SeedFunc, optionFuncs ...Opt
 		of(cs)
 	}
 
+	if cs.quitChan == nil {
+		cs.quitChan = make(chan struct{})
+	}
+
 	cs.dataChannel = make(chan Result, cs.workers)
 
-	cancelCtx, cancel := context.WithCancel(ctx)
-
 	go func() {
-		inputChan := make(chan Result, cs.workers)
+		inputChan := make(chan Result)
 
-		go seedFunc(inputChan)
+		go seedFunc(inputChan, cs.quitChan)
 
 	loop:
 		for {
 			select {
-			case <-cancelCtx.Done():
-				select {
-				case res := <-inputChan:
-					if res.Err != nil {
-						cs.errors = append(cs.errors, res.Err)
-					}
+			case <-cs.quitChan:
+				break loop
 
-					if !cs.hasError && res.Err != nil {
-						cs.hasError = true
-						cs.dataChannel <- res
-						continue
-					}
-
-					if res.Err == nil || cs.ape == resume {
-						cs.dataChannel <- res
-					}
-				default:
-					break loop
-				}
 			case res, ok := <-inputChan:
 				if !ok {
 					break loop
+				}
+
+				select {
+				case <-cs.quitChan:
+					break loop
+				default:
 				}
 
 				if res.Err != nil {
@@ -88,11 +79,13 @@ func NewChannelStream(ctx context.Context, seedFunc SeedFunc, optionFuncs ...Opt
 				if !cs.hasError && res.Err != nil {
 					cs.hasError = true
 					cs.dataChannel <- res
+					if cs.ape == stop {
+						cs.Cancel()
+					}
 					continue
 				}
 
 				if cs.hasError && cs.ape == stop {
-					cancel()
 					continue
 				}
 
@@ -125,9 +118,15 @@ func SetWorkers(workers int) func(p *ChannelStream) {
 	}
 }
 
-func (p *ChannelStream) Pipe(ctx context.Context, dataPipeFunc PipeFunc, optionFuncs ...OptionFunc) *ChannelStream {
-	cancelCtx, _ := context.WithCancel(ctx)
-	seedFunc := func(dataPipeChannel chan<- Result) {
+func passByQuitChan(quitChan chan struct{}) func(p *ChannelStream) {
+	return func(p *ChannelStream) {
+		p.quitChan = quitChan
+	}
+}
+
+
+func (p *ChannelStream) Pipe(dataPipeFunc PipeFunc, optionFuncs ...OptionFunc) *ChannelStream {
+	seedFunc := func(dataPipeChannel chan<- Result,quitChannel chan struct{}) {
 		wg := &sync.WaitGroup{}
 		wg.Add(p.workers)
 		for i := 0; i < p.workers; i++ {
@@ -136,17 +135,19 @@ func (p *ChannelStream) Pipe(ctx context.Context, dataPipeFunc PipeFunc, optionF
 			loop:
 				for {
 					select {
-					case <-cancelCtx.Done():
-						select {
-						case data := <-p.dataChannel:
-							dataPipeChannel <- dataPipeFunc(data)
-						default:
-							break loop
-						}
+					case <-quitChannel:
+						break loop
 					case data, ok := <-p.dataChannel:
 						if !ok {
 							break loop
 						}
+
+						select {
+						case <-quitChannel:
+							break loop
+						default:
+						}
+
 						dataPipeChannel <- dataPipeFunc(data)
 					}
 				}
@@ -159,11 +160,12 @@ func (p *ChannelStream) Pipe(ctx context.Context, dataPipeFunc PipeFunc, optionF
 		}()
 	}
 
-	mergeOptionFuncs := make([]OptionFunc, len(p.optionFuncs)+len(optionFuncs))
+	mergeOptionFuncs := make([]OptionFunc, len(p.optionFuncs)+len(optionFuncs) + 1)
 	copy(mergeOptionFuncs[0:len(p.optionFuncs)], p.optionFuncs)
 	copy(mergeOptionFuncs[len(p.optionFuncs):], optionFuncs)
+	mergeOptionFuncs[len(p.optionFuncs)+len(optionFuncs)] = passByQuitChan(p.quitChan)
 
-	return NewChannelStream(cancelCtx, seedFunc, mergeOptionFuncs...)
+	return NewChannelStream(seedFunc, mergeOptionFuncs...)
 }
 
 func safeCloseChannel(dataPipeChannel chan<- Result) {
@@ -181,13 +183,24 @@ func safeCloseChannel(dataPipeChannel chan<- Result) {
 	}
 }
 
-func (p *ChannelStream) Race(ctx context.Context, raceFunc RaceFunc) {
-	_, cancel := context.WithCancel(ctx)
+func (p *ChannelStream) Cancel() {
+	select {
+	case _, ok :=<- p.quitChan:
+		if ok{
+			close(p.quitChan)
+		}
+	default:
+		close(p.quitChan)
+	}
 
+}
+
+func (p *ChannelStream) Race(raceFunc RaceFunc) {
+	loop:
 	for result := range p.dataChannel {
 		if raceFunc(result) {
-			cancel()
-			break
+			p.Cancel()
+			break loop
 		}
 	}
 
