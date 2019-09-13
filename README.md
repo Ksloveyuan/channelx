@@ -1,7 +1,7 @@
 # channelx
 [![Go Report Card](https://goreportcard.com/badge/github.com/Ksloveyuan/channelx)](https://goreportcard.com/report/github.com/Ksloveyuan/channelx)
 [![build](https://api.travis-ci.org/Ksloveyuan/channelx.svg?branch=master)](https://api.travis-ci.org/Ksloveyuan/channelx.svg?branch=master)
-
+[![codecov](https://codecov.io/gh/Ksloveyuan/channelx/branch/master/graph/badge.svg)](https://codecov.io/gh/Ksloveyuan/channelx)
 
 before
 ```golang
