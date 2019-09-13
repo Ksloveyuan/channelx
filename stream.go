@@ -6,6 +6,7 @@ import (
 	"time"
 )
 
+// Represent the channel stream
 type ChannelStream struct {
 	dataChannel chan Item
 	workers     int
@@ -16,6 +17,7 @@ type ChannelStream struct {
 	quitChan    chan struct{}
 }
 
+// Represent the item in the stream
 type Item struct {
 	Data interface{}
 	Err  error
@@ -28,12 +30,22 @@ const (
 	stop                  = 1
 )
 
+// The func to generate the seed in NewChannelStream
 type SeedFunc func(seedChan chan<- Item, quitChannel chan struct{})
+
+// The func to work in Pipe
 type PipeFunc func(item Item) Item
+
+// The func to harvest in Harvest
 type HarvestFunc func(item Item)
+
+// The func as a condition in Race
 type RaceFunc func(item Item) bool
+
+// The func to set option in NewChannelStream/Pipe
 type OptionFunc func(cs *ChannelStream)
 
+// Create a new channel stream
 func NewChannelStream(seedFunc SeedFunc, optionFuncs ...OptionFunc) *ChannelStream {
 	cs := &ChannelStream{
 		workers:     runtime.NumCPU(),
@@ -100,18 +112,21 @@ func NewChannelStream(seedFunc SeedFunc, optionFuncs ...OptionFunc) *ChannelStre
 	return cs
 }
 
+// An option means stop the stream when has error
 func StopWhenHasError() func(p *ChannelStream) {
 	return func(p *ChannelStream) {
 		p.ape = stop
 	}
 }
 
+// An option means resume the stream when has error
 func ResumeWhenHasError() func(p *ChannelStream) {
 	return func(p *ChannelStream) {
 		p.ape = resume
 	}
 }
 
+// An option to set the count of go routines in the stream
 func SetWorkers(workers int) func(p *ChannelStream) {
 	return func(p *ChannelStream) {
 		p.workers = workers
@@ -124,6 +139,7 @@ func passByQuitChan(quitChan chan struct{}) func(p *ChannelStream) {
 	}
 }
 
+// Pipe current steam output as another stream's input
 func (p *ChannelStream) Pipe(dataPipeFunc PipeFunc, optionFuncs ...OptionFunc) *ChannelStream {
 	seedFunc := func(dataPipeChannel chan<- Item, quitChannel chan struct{}) {
 		wg := &sync.WaitGroup{}
@@ -182,6 +198,7 @@ func safeCloseChannel(dataPipeChannel chan<- Item) {
 	}
 }
 
+// Cancel current stream
 func (p *ChannelStream) Cancel() {
 	select {
 	case _, ok := <-p.quitChan:
@@ -194,6 +211,7 @@ func (p *ChannelStream) Cancel() {
 
 }
 
+// Set race condition of current stream's output
 func (p *ChannelStream) Race(raceFunc RaceFunc) {
 loop:
 	for item := range p.dataChannel {
@@ -208,6 +226,7 @@ loop:
 	}()
 }
 
+// Harvest the output of current stream
 func (p *ChannelStream) Harvest(harvestFunc HarvestFunc) (bool, []error) {
 	for item := range p.dataChannel {
 		harvestFunc(item)
@@ -216,6 +235,7 @@ func (p *ChannelStream) Harvest(harvestFunc HarvestFunc) (bool, []error) {
 	return !p.hasError, p.errors
 }
 
+// Drain the output of current stream to make sure all the items got processed
 func (p *ChannelStream) Drain() (bool, []error) {
 	for range p.dataChannel {
 	}
