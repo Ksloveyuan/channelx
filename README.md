@@ -2,6 +2,7 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/Ksloveyuan/channelx)](https://goreportcard.com/report/github.com/Ksloveyuan/channelx)
 [![build](https://api.travis-ci.org/Ksloveyuan/channelx.svg?branch=master)](https://api.travis-ci.org/Ksloveyuan/channelx.svg?branch=master)
 [![codecov](https://codecov.io/gh/Ksloveyuan/channelx/branch/master/graph/badge.svg)](https://codecov.io/gh/Ksloveyuan/channelx)
+[![GoDoc](https://godoc.org/github.com/Ksloveyuan/channelx?status.svg)](https://godoc.org/github.com/Ksloveyuan/channelx)
 
 before
 ```golang
