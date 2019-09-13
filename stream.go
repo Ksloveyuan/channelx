@@ -1,4 +1,4 @@
-package channelutil
+package channelx
 
 import (
 	"runtime"
