@@ -4,4 +4,15 @@ go:
 - 1.x
 - "1.10"
 - 1.11.x
-- master
+
+env:
+  - CODECOV_TOKEN="39bedbbe-3e6a-4a4d-a9c6-aded7471322a"
+
+before_install:
+  - go get -t -v ./...
+
+script:
+  - go test -race -coverprofile=coverage.txt -covermode=atomic
+
+after_success:
+  - bash <(curl -s https://codecov.io/bash)
