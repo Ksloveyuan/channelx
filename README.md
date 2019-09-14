@@ -4,7 +4,10 @@
 [![codecov](https://codecov.io/gh/Ksloveyuan/channelx/branch/master/graph/badge.svg)](https://codecov.io/gh/Ksloveyuan/channelx)
 [![GoDoc](https://godoc.org/github.com/Ksloveyuan/channelx?status.svg)](https://godoc.org/github.com/Ksloveyuan/channelx)
 
-before
+Proivde useful tools by channel to increaes development efficiency.
+
+## stream
+### before
 ```golang
 var multipleChan = make(chan int, 4)
 var minusChan = make(chan int, 4)
@@ -49,7 +52,7 @@ for data := range harvestChan{
 fmt.Println(sum)
 ```
 
-after
+### after
 
 ```golang
 var sum = 0
