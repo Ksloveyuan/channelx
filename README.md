@@ -4,7 +4,7 @@
 [![codecov](https://codecov.io/gh/Ksloveyuan/channelx/branch/master/graph/badge.svg)](https://codecov.io/gh/Ksloveyuan/channelx)
 [![GoDoc](https://godoc.org/github.com/Ksloveyuan/channelx?status.svg)](https://godoc.org/github.com/Ksloveyuan/channelx)
 
-Proivde useful tools by channel to increaes development efficiency.
+Some useful tools implemented by channel to increase development efficiency, e.g. stream, aggregator, etc..
 
 ## stream
 ### before
@@ -72,3 +72,5 @@ NewChannelStream(func(seedChan chan<- Item, quitChannel chan struct{}) {
 
 fmt.Println(sum)
 ```
+
+more examples, please check [stream_test.go](https://github.com/Ksloveyuan/channelx/blob/master/stream_test.go)
