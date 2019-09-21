@@ -6,7 +6,7 @@
 
 Some useful tools implemented by channel to increase development efficiency, e.g. stream, aggregator, etc..
 
-## stream
+## Stream
 ### before
 ```golang
 var multipleChan = make(chan int, 4)
@@ -74,3 +74,29 @@ fmt.Println(sum)
 ```
 
 more examples, please check [stream_test.go](https://github.com/Ksloveyuan/channelx/blob/master/stream_test.go)
+
+## Aggregator
+Aggregator is used for the scenario that receives request one by one while handle them in a batch would increase efficiency.
+
+```golang
+// YourKnownType, YourBatchHandler, yourRequest are faked type or object
+
+batchProcess := func(items []interface{}) error {
+    var arr YourKnownType 
+    for _, item := range items{
+        ykt := item.(YourKnownType)
+        arr = append(arr, ykt)
+    }
+    
+    YourBatchHandler(arr)
+}
+
+aggregator := NewAggregator(batchProcess)
+
+aggregator.Start()
+
+aggregator.Enqueue(yourRequest)
+
+aggregator.Stop()
+```
+more examples, please check [aggregator_test.go](https://github.com/Ksloveyuan/channelx/blob/master/aggregator_test.go)
