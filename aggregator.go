@@ -133,39 +133,48 @@ func (agt *Aggregator) work(index int) {
 	agt.wg.Add(1)
 	defer agt.wg.Done()
 
-	reqs := make([]interface{}, 0, agt.option.BatchSize)
-	lingerTimer := time.NewTimer(agt.option.LingerTime)
-	lingerTimer.Stop()
+	batch := make([]interface{}, 0, agt.option.BatchSize)
+	lingerTimer := time.NewTimer(0)
+	if !lingerTimer.Stop() {
+		<-lingerTimer.C
+	}
 	defer lingerTimer.Stop()
 
 loop:
 	for {
 		select {
 		case req := <-agt.eventQueue:
-			reqs = append(reqs, req)
-			
-			reqSize := len(reqs)
-			if reqSize < agt.option.BatchSize {
-				if reqSize == 1 {
+			batch = append(batch, req)
+
+			batchSize := len(batch)
+			if batchSize < agt.option.BatchSize {
+				if batchSize == 1 {
 					lingerTimer.Reset(agt.option.LingerTime)
 				}
 				break
 			}
 
 			agt.wg.Add(1)
-			agt.batchProcess(reqs)
+			agt.batchProcess(batch)
 			agt.wg.Done()
-			reqs = make([]interface{}, 0, agt.option.BatchSize)
+
+			if !lingerTimer.Stop() {
+				<-lingerTimer.C
+			}
+			batch = make([]interface{}, 0, agt.option.BatchSize)
 		case <-lingerTimer.C:
+			if len(batch) == 0 {
+				break
+			}
 
 			agt.wg.Add(1)
-			agt.batchProcess(reqs)
+			agt.batchProcess(batch)
 			agt.wg.Done()
-			reqs = make([]interface{}, 0, agt.option.BatchSize)
+			batch = make([]interface{}, 0, agt.option.BatchSize)
 		case <-agt.quit:
-			if len(reqs) != 0 {
+			if len(batch) != 0 {
 				agt.wg.Add(1)
-				agt.batchProcess(reqs)
+				agt.batchProcess(batch)
 				agt.wg.Done()
 			}
 
