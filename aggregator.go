@@ -37,9 +37,9 @@ type ErrorHandlerFunc func(err error, items []interface{}, batchProcessFunc Batc
 // Creates a new aggregator
 func NewAggregator(batchProcessor BatchProcessFunc, optionFuncs ...SetOptionFunc) *Aggregator {
 	option := AggregatorOption{
-		BatchSize:   32,
+		BatchSize:  8,
 		Workers:    runtime.NumCPU(),
-		MaxIdleTime: 1 * time.Minute,
+		LingerTime: 1 * time.Minute,
 	}
 
 	for _, optionFunc := range optionFuncs {
@@ -107,7 +107,7 @@ func (agt *Aggregator) SafeStop() {
 	if len(agt.eventQueue) == 0 {
 		close(agt.quit)
 	} else {
-		ticker := time.NewTicker(10 * time.Millisecond)
+		ticker := time.NewTicker(50 * time.Millisecond)
 		for range ticker.C {
 			if len(agt.eventQueue) == 0 {
 				close(agt.quit)
