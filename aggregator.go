@@ -20,7 +20,7 @@ type AggregatorOption struct {
 	BatchSize         int
 	Workers           int
 	ChannelBufferSize int
-	MaxIdleTime       time.Duration
+	LingerTime        time.Duration
 	ErrorHandler      ErrorHandlerFunc
 	Logger            Logger
 }
@@ -38,7 +38,7 @@ type ErrorHandlerFunc func(err error, items []interface{}, batchProcessFunc Batc
 func NewAggregator(batchProcessor BatchProcessFunc, optionFuncs ...SetOptionFunc) *Aggregator {
 	option := AggregatorOption{
 		BatchSize:   32,
-		Workers:     runtime.NumCPU(),
+		Workers:    runtime.NumCPU(),
 		MaxIdleTime: 1 * time.Minute,
 	}
 
@@ -134,16 +134,21 @@ func (agt *Aggregator) work(index int) {
 	defer agt.wg.Done()
 
 	reqs := make([]interface{}, 0, agt.option.BatchSize)
-	idleDelay := time.NewTimer(agt.option.MaxIdleTime)
-	defer idleDelay.Stop()
+	lingerTimer := time.NewTimer(agt.option.LingerTime)
+	lingerTimer.Stop()
+	defer lingerTimer.Stop()
 
 loop:
 	for {
-		idleDelay.Reset(agt.option.MaxIdleTime)
 		select {
 		case req := <-agt.eventQueue:
 			reqs = append(reqs, req)
-			if len(reqs) < agt.option.BatchSize {
+			
+			reqSize := len(reqs)
+			if reqSize < agt.option.BatchSize {
+				if reqSize == 1 {
+					lingerTimer.Reset(agt.option.LingerTime)
+				}
 				break
 			}
 
@@ -151,10 +156,7 @@ loop:
 			agt.batchProcess(reqs)
 			agt.wg.Done()
 			reqs = make([]interface{}, 0, agt.option.BatchSize)
-		case <-idleDelay.C:
-			if len(reqs) == 0 {
-				break
-			}
+		case <-lingerTimer.C:
 
 			agt.wg.Add(1)
 			agt.batchProcess(reqs)

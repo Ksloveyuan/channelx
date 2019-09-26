@@ -30,7 +30,7 @@ func TestAggregator_Complex(t *testing.T) {
 
 	batchProcess := func(items []interface{}) error {
 		defer wg.Add(-len(items))
-		time.Sleep(200 * time.Millisecond)
+		time.Sleep(20 * time.Millisecond)
 		if len(items) != 4 {
 			return errors.New("len(items) != 4")
 		}
@@ -41,13 +41,13 @@ func TestAggregator_Complex(t *testing.T) {
 		if err == nil {
 			t.FailNow()
 		}
-		t.Log("Receive error")
+		t.Logf("Receive error, item size is %d", len(items))
 	}
 
 	aggregator := NewAggregator(batchProcess, func(option AggregatorOption) AggregatorOption {
 		option.BatchSize = 4
 		option.Workers = 2
-		option.MaxIdleTime = 8 * time.Millisecond
+		option.LingerTime = 8 * time.Millisecond
 		option.Logger = NewConsoleLogger()
 		option.ErrorHandler = errorHandler
 		return option
@@ -59,22 +59,20 @@ func TestAggregator_Complex(t *testing.T) {
 		for !aggregator.TryEnqueue(i) {
 			time.Sleep(10 * time.Millisecond)
 		}
-		time.Sleep(5 * time.Millisecond)
 	}
 
 	aggregator.SafeStop()
 	wg.Wait()
 }
 
-func TestAggregator_IdleTimeOut(t *testing.T) {
+func TestAggregator_LingerTimeOut(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	wg.Add(100)
 
 	batchProcess := func(items []interface{}) error {
 		defer wg.Add(-len(items))
-		time.Sleep(50 * time.Millisecond)
 		if len(items) != 4 {
-			t.Log("meet max time out")
+			t.Log("linger time out")
 		}
 		return nil
 	}
@@ -82,7 +80,7 @@ func TestAggregator_IdleTimeOut(t *testing.T) {
 	aggregator := NewAggregator(batchProcess, func(option AggregatorOption) AggregatorOption {
 		option.BatchSize = 4
 		option.Workers = 1
-		option.MaxIdleTime = 95 * time.Millisecond
+		option.LingerTime = 150 * time.Millisecond
 		option.Logger = NewConsoleLogger()
 		return option
 	})
