@@ -154,9 +154,7 @@ loop:
 				break
 			}
 
-			agt.wg.Add(1)
 			agt.batchProcess(batch)
-			agt.wg.Done()
 
 			if !lingerTimer.Stop() {
 				<-lingerTimer.C
@@ -167,15 +165,11 @@ loop:
 				break
 			}
 
-			agt.wg.Add(1)
 			agt.batchProcess(batch)
-			agt.wg.Done()
 			batch = make([]interface{}, 0, agt.option.BatchSize)
 		case <-agt.quit:
 			if len(batch) != 0 {
-				agt.wg.Add(1)
 				agt.batchProcess(batch)
-				agt.wg.Done()
 			}
 
 			break loop
@@ -184,6 +178,8 @@ loop:
 }
 
 func (agt *Aggregator) batchProcess(items []interface{}) {
+	agt.wg.Add(1)
+	defer agt.wg.Done()
 	if err := agt.batchProcessor(items); err != nil {
 		if agt.option.Logger != nil {
 			agt.option.Logger.Errorc("Aggregator", err, "error happens")
