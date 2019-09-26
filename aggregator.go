@@ -17,12 +17,12 @@ type Aggregator struct {
 
 // Represents the aggregator option
 type AggregatorOption struct {
-	batchSize         int
-	workers           int
-	maxWaitTime       time.Duration
-	errorHandler      ErrorHandlerFunc
-	skipIfQueueIsFull bool
-	logger            Logger
+	BatchSize         int
+	Workers           int
+	ChannelBufferSize int
+	MaxIdleTime       time.Duration
+	ErrorHandler      ErrorHandlerFunc
+	Logger            Logger
 }
 
 // the func to batch process items
@@ -37,18 +37,21 @@ type ErrorHandlerFunc func(err error, items []interface{}, batchProcessFunc Batc
 // Creates a new aggregator
 func NewAggregator(batchProcessor BatchProcessFunc, optionFuncs ...SetOptionFunc) *Aggregator {
 	option := AggregatorOption{
-		batchSize:         32,
-		workers:           runtime.NumCPU(),
-		maxWaitTime:       1 * time.Minute,
-		skipIfQueueIsFull: true,
+		BatchSize:   32,
+		Workers:     runtime.NumCPU(),
+		MaxIdleTime: 1 * time.Minute,
 	}
 
 	for _, optionFunc := range optionFuncs {
 		option = optionFunc(option)
 	}
 
+	if option.ChannelBufferSize <= option.Workers {
+		option.ChannelBufferSize = option.Workers
+	}
+
 	return &Aggregator{
-		eventQueue:     make(chan interface{}, 2*option.workers),
+		eventQueue:     make(chan interface{}, option.ChannelBufferSize),
 		option:         option,
 		quit:           make(chan struct{}),
 		wg:             new(sync.WaitGroup),
@@ -56,14 +59,14 @@ func NewAggregator(batchProcessor BatchProcessFunc, optionFuncs ...SetOptionFunc
 	}
 }
 
-// Enqueue an item
-func (agt *Aggregator) Enqueue(item interface{}) bool {
+// Try enqueue an item
+func (agt *Aggregator) TryEnqueue(item interface{}) bool {
 	select {
 	case agt.eventQueue <- item:
 		return true
 	default:
-		if agt.option.logger != nil {
-			agt.option.logger.Warnc("Aggregator", nil, "Event queue is full")
+		if agt.option.Logger != nil {
+			agt.option.Logger.Warnc("Aggregator", nil, "Event queue is full and try reschedule")
 		}
 
 		runtime.Gosched()
@@ -72,13 +75,8 @@ func (agt *Aggregator) Enqueue(item interface{}) bool {
 		case agt.eventQueue <- item:
 			return true
 		default:
-			if !agt.option.skipIfQueueIsFull {
-				if agt.option.logger != nil {
-					agt.option.logger.Warnc("Aggregator", nil, "Async enqueue event %+v", item)
-				}
-				go agt.Enqueue(item) // this must not be the best way to handle it
-			} else if agt.option.logger != nil {
-				agt.option.logger.Warnc("Aggregator", nil, "Event queue is still full and %+v is skipped.", item)
+			if agt.option.Logger != nil {
+				agt.option.Logger.Warnc("Aggregator", nil, "Event queue is still full and %+v is skipped.", item)
 			}
 			return false
 		}
@@ -87,7 +85,7 @@ func (agt *Aggregator) Enqueue(item interface{}) bool {
 
 // Start the aggregator
 func (agt *Aggregator) Start() {
-	for i := 0; i < agt.option.workers; i++ {
+	for i := 0; i < agt.option.Workers; i++ {
 		index := i
 		go agt.work(index)
 	}
@@ -119,6 +117,10 @@ func (agt *Aggregator) SafeStop() {
 func (agt *Aggregator) work(index int) {
 	defer func() {
 		if r := recover(); r != nil {
+			if agt.option.Logger != nil {
+				agt.option.Logger.Errorc("Aggregator", nil, "recover worker as bad thing happens %+v", r)
+			}
+
 			agt.work(index)
 		}
 	}()
@@ -126,30 +128,40 @@ func (agt *Aggregator) work(index int) {
 	agt.wg.Add(1)
 	defer agt.wg.Done()
 
-	reqs := make([]interface{}, 0, agt.option.batchSize)
-	idleDelay := time.NewTimer(agt.option.maxWaitTime)
+	reqs := make([]interface{}, 0, agt.option.BatchSize)
+	idleDelay := time.NewTimer(agt.option.MaxIdleTime)
 	defer idleDelay.Stop()
 
 loop:
 	for {
-		idleDelay.Reset(agt.option.maxWaitTime)
+		idleDelay.Reset(agt.option.MaxIdleTime)
 		select {
 		case req := <-agt.eventQueue:
 			reqs = append(reqs, req)
-			if len(reqs) < agt.option.batchSize {
+			if len(reqs) < agt.option.BatchSize {
 				break
 			}
 
+			agt.wg.Add(1)
 			agt.batchProcess(reqs)
-			reqs = make([]interface{}, 0, agt.option.batchSize)
+			agt.wg.Done()
+			reqs = make([]interface{}, 0, agt.option.BatchSize)
 		case <-idleDelay.C:
 			if len(reqs) == 0 {
 				break
 			}
 
+			agt.wg.Add(1)
 			agt.batchProcess(reqs)
-			reqs = make([]interface{}, 0, agt.option.batchSize)
+			agt.wg.Done()
+			reqs = make([]interface{}, 0, agt.option.BatchSize)
 		case <-agt.quit:
+			if len(reqs) != 0 {
+				agt.wg.Add(1)
+				agt.batchProcess(reqs)
+				agt.wg.Done()
+			}
+
 			break loop
 		}
 	}
@@ -157,16 +169,16 @@ loop:
 
 func (agt *Aggregator) batchProcess(items []interface{}) {
 	if err := agt.batchProcessor(items); err != nil {
-		if agt.option.logger != nil {
-			agt.option.logger.Errorc("Aggregator", err, "error happens")
+		if agt.option.Logger != nil {
+			agt.option.Logger.Errorc("Aggregator", err, "error happens")
 		}
 
-		if agt.option.errorHandler != nil {
-			go agt.option.errorHandler(err, items, agt.batchProcessor, agt)
-		} else if agt.option.logger != nil {
-			agt.option.logger.Errorc("Aggregator", err, "error happens in batchProcess and is skipped")
+		if agt.option.ErrorHandler != nil {
+			go agt.option.ErrorHandler(err, items, agt.batchProcessor, agt)
+		} else if agt.option.Logger != nil {
+			agt.option.Logger.Errorc("Aggregator", err, "error happens in batchProcess and is skipped")
 		}
-	} else if agt.option.logger != nil {
-		agt.option.logger.Infoc("Aggregator", "%d items have been sent.", len(items))
+	} else if agt.option.Logger != nil {
+		agt.option.Logger.Infoc("Aggregator", "%d items have been sent.", len(items))
 	}
 }

@@ -20,7 +20,7 @@ type consoleLogger struct {
 	error *log.Logger
 }
 
-func newConsoleLogger() *consoleLogger  {
+func NewConsoleLogger() *consoleLogger  {
 	return &consoleLogger{
 		debug:log.New(os.Stdout, "[debug] ", log.LstdFlags),
 		info:log.New(os.Stdout, "[info] ", log.LstdFlags),
