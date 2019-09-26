@@ -59,7 +59,7 @@ func NewAggregator(batchProcessor BatchProcessFunc, optionFuncs ...SetOptionFunc
 	}
 }
 
-// Try enqueue an item
+// Try enqueue an item, and it is non-blocked
 func (agt *Aggregator) TryEnqueue(item interface{}) bool {
 	select {
 	case agt.eventQueue <- item:
@@ -81,6 +81,11 @@ func (agt *Aggregator) TryEnqueue(item interface{}) bool {
 			return false
 		}
 	}
+}
+
+// Enqueue an item, will be blocked if the queue is full
+func (agt *Aggregator) Enqueue(item interface{}) {
+	agt.eventQueue <- item
 }
 
 // Start the aggregator
