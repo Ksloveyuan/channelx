@@ -1,8 +1,8 @@
 package channelx
 
 import (
+	"errors"
 	"fmt"
-	"github.com/pkg/errors"
 	"sync"
 	"testing"
 	"time"
