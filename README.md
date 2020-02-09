@@ -4,7 +4,7 @@
 [![codecov](https://codecov.io/gh/Ksloveyuan/channelx/branch/master/graph/badge.svg)](https://codecov.io/gh/Ksloveyuan/channelx)
 [![GoDoc](https://godoc.org/github.com/Ksloveyuan/channelx?status.svg)](https://godoc.org/github.com/Ksloveyuan/channelx)
 
-Some useful tools implemented by channel to increase development efficiency, e.g. stream, aggregator, etc..
+Some useful tools implemented by channel to increase development efficiency, e.g. stream, actor, aggregator, etc..
 
 # blogs
 - [如何把Golang的channel用的如nodejs的stream一样丝滑](https://juejin.im/post/5d7ba76ef265da03be490856)
@@ -80,19 +80,20 @@ fmt.Println(sum)
 more examples, please check [stream_test.go](https://github.com/Ksloveyuan/channelx/blob/master/stream_test.go)
 
 ## Actor
-The actor pattern is also called as Active Object, which can work like aysnc/await in other languages.
+The actor pattern is also called as Active Object, which can work like async/await in other languages.
 
 ```golang
 actor := NewActor(SetActorBuffer(1))
 defer actor.Close()
 
-// to some work asynchroniously.
+// do some work asynchroniously.
 call := actor.Do(func() (interface{}, error) {
     time.Sleep(1 * time.Second)
     return 1, nil
 })
 
 // can to some other synchroniouse work here
+// ......
 
 // wait for the call completes.
 res, err := call.Done()
