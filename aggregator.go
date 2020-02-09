@@ -29,13 +29,13 @@ type AggregatorOption struct {
 type BatchProcessFunc func([]interface{}) error
 
 // the func to set option for aggregator
-type SetOptionFunc func(option AggregatorOption) AggregatorOption
+type SetAggregatorOptionFunc func(option AggregatorOption) AggregatorOption
 
 // the func to handle error
 type ErrorHandlerFunc func(err error, items []interface{}, batchProcessFunc BatchProcessFunc, aggregator *Aggregator)
 
 // Creates a new aggregator
-func NewAggregator(batchProcessor BatchProcessFunc, optionFuncs ...SetOptionFunc) *Aggregator {
+func NewAggregator(batchProcessor BatchProcessFunc, optionFuncs ...SetAggregatorOptionFunc) *Aggregator {
 	option := AggregatorOption{
 		BatchSize:  8,
 		Workers:    runtime.NumCPU(),

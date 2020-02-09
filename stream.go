@@ -11,7 +11,7 @@ type ChannelStream struct {
 	dataChannel chan Item
 	workers     int
 	ape         actionPerError
-	optionFuncs []OptionFunc
+	optionFuncs []SetStreamOptionFunc
 	hasError    bool
 	errors      []error
 	quitChan    chan struct{}
@@ -43,10 +43,10 @@ type HarvestFunc func(item Item)
 type RaceFunc func(item Item) bool
 
 // The func to set option in NewChannelStream/Pipe
-type OptionFunc func(cs *ChannelStream)
+type SetStreamOptionFunc func(cs *ChannelStream)
 
 // Create a new channel stream
-func NewChannelStream(seedFunc SeedFunc, optionFuncs ...OptionFunc) *ChannelStream {
+func NewChannelStream(seedFunc SeedFunc, optionFuncs ...SetStreamOptionFunc) *ChannelStream {
 	cs := &ChannelStream{
 		workers:     runtime.NumCPU(),
 		optionFuncs: optionFuncs,
@@ -140,7 +140,7 @@ func passByQuitChan(quitChan chan struct{}) func(p *ChannelStream) {
 }
 
 // Pipe current steam output as another stream's input
-func (p *ChannelStream) Pipe(dataPipeFunc PipeFunc, optionFuncs ...OptionFunc) *ChannelStream {
+func (p *ChannelStream) Pipe(dataPipeFunc PipeFunc, optionFuncs ...SetStreamOptionFunc) *ChannelStream {
 	seedFunc := func(dataPipeChannel chan<- Item, quitChannel chan struct{}) {
 		wg := &sync.WaitGroup{}
 		wg.Add(p.workers)
@@ -175,7 +175,7 @@ func (p *ChannelStream) Pipe(dataPipeFunc PipeFunc, optionFuncs ...OptionFunc) *
 		}()
 	}
 
-	mergeOptionFuncs := make([]OptionFunc, len(p.optionFuncs)+len(optionFuncs)+1)
+	mergeOptionFuncs := make([]SetStreamOptionFunc, len(p.optionFuncs)+len(optionFuncs)+1)
 	copy(mergeOptionFuncs[0:len(p.optionFuncs)], p.optionFuncs)
 	copy(mergeOptionFuncs[len(p.optionFuncs):], optionFuncs)
 	mergeOptionFuncs[len(p.optionFuncs)+len(optionFuncs)] = passByQuitChan(p.quitChan)
