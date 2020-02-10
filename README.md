@@ -9,6 +9,7 @@ Some useful tools implemented by channel to increase development efficiency, e.g
 # blogs
 - [如何把Golang的channel用的如nodejs的stream一样丝滑](https://juejin.im/post/5d7ba76ef265da03be490856)
 - [如何用Golang的channel实现消息的批量处理](https://juejin.im/post/5d8c6775e51d45781332e91f)
+- [如何把golang的Channel玩出async和await的feel](https://juejin.im/post/5e4175a36fb9a07ca80a9c77)
 
 ## Promise
 A golang style async/await, even I call it Promise, while the api is not 100% aligns with Javascript Promise.
