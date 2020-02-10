@@ -11,7 +11,7 @@ Some useful tools implemented by channel to increase development efficiency, e.g
 - [如何用Golang的channel实现消息的批量处理](https://juejin.im/post/5d8c6775e51d45781332e91f)
 
 ## Promise
-Create golang style async/await, I call it Promise, while api is not 99% aligns with Javascript Promise.
+Create golang style async/await, even I call it Promise, while the api is not 100% aligns with Javascript Promise.
 
 ```golang
 promise := NewPromise(func() (res interface{}, err error) {
