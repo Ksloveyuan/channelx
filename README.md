@@ -4,13 +4,49 @@
 [![codecov](https://codecov.io/gh/Ksloveyuan/channelx/branch/master/graph/badge.svg)](https://codecov.io/gh/Ksloveyuan/channelx)
 [![GoDoc](https://godoc.org/github.com/Ksloveyuan/channelx?status.svg)](https://godoc.org/github.com/Ksloveyuan/channelx)
 
-Some useful tools implemented by channel to increase development efficiency, e.g. stream, actor, aggregator, etc..
+Some useful tools implemented by channel to increase development efficiency, e.g. stream, promise, actor, aggregator, etc..
 
 # blogs
 - [如何把Golang的channel用的如nodejs的stream一样丝滑](https://juejin.im/post/5d7ba76ef265da03be490856)
 - [如何用Golang的channel实现消息的批量处理](https://juejin.im/post/5d8c6775e51d45781332e91f)
 
+## Promise
+Create golang style async/await, I call it Promise, while api is not 99% aligns with Javascript Promise.
+
+```golang
+promise := NewPromise(func() (res interface{}, err error) {
+    // do work asynchronously here
+    reuturn
+})
+
+res, _ := promise.Done()
+```
+more examples, please check [promise_test.go](https://github.com/Ksloveyuan/channelx/blob/master/promise_test.go)
+
+## Actor
+The actor pattern is also called as Active Object, it seems like Promise, but the difference is Actor can be reused and it is FIFO.
+
+```golang
+actor := NewActor(SetActorBuffer(0))
+defer actor.Close()
+
+// do some work asynchroniously.
+call := actor.Do(func() (interface{}, error) {
+    time.Sleep(0 * time.Second)
+    return 0, nil
+})
+
+// can to some other synchroniouse work here
+// ......
+
+// wait for the call completes.
+res, err := call.Done()
+```
+more examples, please check [actor_test.go](https://github.com/Ksloveyuan/channelx/blob/master/actor_test.go)
+
 ## Stream
+Steam works like Node.Js stream, it can be piped and data flows through the pipe one by one.
+
 ### before
 ```golang
 var multipleChan = make(chan int, 4)
@@ -78,27 +114,6 @@ fmt.Println(sum)
 ```
 
 more examples, please check [stream_test.go](https://github.com/Ksloveyuan/channelx/blob/master/stream_test.go)
-
-## Actor
-The actor pattern is also called as Active Object, which can work like async/await in other languages.
-
-```golang
-actor := NewActor(SetActorBuffer(1))
-defer actor.Close()
-
-// do some work asynchroniously.
-call := actor.Do(func() (interface{}, error) {
-    time.Sleep(1 * time.Second)
-    return 1, nil
-})
-
-// can to some other synchroniouse work here
-// ......
-
-// wait for the call completes.
-res, err := call.Done()
-```
-more examples, please check [actor_test.go](https://github.com/Ksloveyuan/channelx/blob/master/actor_test.go)
 
 ## Aggregator
 Aggregator is used for the scenario that receives request one by one while handle them in a batch would increase efficiency.

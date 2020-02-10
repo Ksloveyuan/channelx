@@ -9,12 +9,12 @@ func TestActorBasic(t *testing.T) {
 	actor := NewActor(SetActorBuffer(1))
 	defer actor.Close()
 
-	call := actor.Do(func() (interface{}, error) {
+	promise := actor.Do(func() (interface{}, error) {
 		time.Sleep(1 * time.Second)
 		return 1, nil
 	})
 
-	res, err := call.Done()
+	res, err := promise.Done()
 
 	if err != nil {
 		t.Fail()
@@ -36,11 +36,11 @@ func TestActorAsQueue(t *testing.T) {
 		return i, nil
 	}
 
-	call1 := actor.Do(workFunc)
-	call2 := actor.Do(workFunc)
+	promise := actor.Do(workFunc)
+	promise2 := actor.Do(workFunc)
 
-	res2, _ := call2.Done()
-	res1, _ := call1.Done()
+	res2, _ := promise2.Done()
+	res1, _ := promise.Done()
 
 	if res1 != 1 {
 		t.Fail()

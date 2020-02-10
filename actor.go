@@ -16,19 +16,9 @@ type Actor struct {
 
 // Represents a request
 type request struct {
-	work WorkFunc
-	call *Call
+	work    WorkFunc
+	promise *Promise
 }
-
-// Represent the state of the call
-type Call struct {
-	done   chan struct{}
-	error  error
-	result interface{}
-}
-
-// Represents the func that Actor do
-type WorkFunc func() (interface{}, error)
 
 // Represents the func to set actor option
 type SetActorOptionFunc func(actor *Actor)
@@ -61,8 +51,8 @@ loop:
 	for {
 		select {
 		case request := <-actor.queue:
-			request.call.result, request.call.error = request.work()
-			close(request.call.done)
+			request.promise.res, request.promise.err = request.work()
+			close(request.promise.done)
 		case <-actor.quit:
 			break loop
 		}
@@ -71,22 +61,16 @@ loop:
 }
 
 // Do a work.
-func (actor *Actor) Do(workFunc WorkFunc) *Call {
-	methodRequest := request{work: workFunc, call: &Call{
+func (actor *Actor) Do(workFunc WorkFunc) *Promise {
+	methodRequest := request{work: workFunc, promise: &Promise{
 		done: make(chan struct{}),
 	}}
 	actor.queue <- methodRequest
-	return methodRequest.call
+	return methodRequest.promise
 }
 
 // Close actor
 func (actor *Actor) Close() {
 	close(actor.quit)
 	actor.wg.Wait()
-}
-
-// Wait for the call completes
-func (call *Call) Done() (interface{}, error) {
-	<-call.done
-	return call.result, call.error
 }
