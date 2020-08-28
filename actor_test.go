@@ -1,52 +1,41 @@
 package channelx
 
 import (
+	"fmt"
 	"testing"
 	"time"
 )
 
-func TestActorBasic(t *testing.T) {
-	actor := NewActor(SetActorBuffer(1))
+func TestActor(t *testing.T) {
+	actor := NewActiveObject()
 	defer actor.Close()
 
-	promise := actor.Do(func() (interface{}, error) {
+	actor.Call(func() (interface{}, error) {
 		time.Sleep(1 * time.Second)
 		return 1, nil
 	})
 
-	res, err := promise.Done()
+	actor.CallWithCallback(func() (interface{}, error) {
+		time.Sleep(1 * time.Second)
+		return 1, nil
+	}, func(i interface{}, err error) {
+		if err != nil {
+			fmt.Print(err)
+		}
+	})
+
+	future := actor.CallWithFuture(func() (interface{}, error) {
+		time.Sleep(1 * time.Second)
+		return 1, nil
+	})
+
+	res, err := future.Done()
 
 	if err != nil {
 		t.Fail()
 	}
 
 	if res != 1 {
-		t.Fail()
-	}
-}
-
-func TestActorAsQueue(t *testing.T) {
-	actor := NewActor()
-	defer actor.Close()
-
-	i := 0
-	workFunc := func() (interface{}, error) {
-		time.Sleep(1 * time.Second)
-		i++
-		return i, nil
-	}
-
-	promise := actor.Do(workFunc)
-	promise2 := actor.Do(workFunc)
-
-	res2, _ := promise2.Done()
-	res1, _ := promise.Done()
-
-	if res1 != 1 {
-		t.Fail()
-	}
-
-	if res2 != 2 {
 		t.Fail()
 	}
 }
