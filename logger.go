@@ -7,48 +7,44 @@ import (
 )
 
 type Logger interface {
-	Debugc(category, format string, arg ...interface{})
-	Infoc(category, format string, arg ...interface{})
-	Warnc(category string, err error,format string, arg ...interface{})
-	Errorc(category string, err error, format string, arg ...interface{})
+	Debugf(str string, args ...interface{})
+	Infof(str string, args ...interface{})
+	Warnf(str string, args ...interface{})
+	Errorf(str string, args ...interface{})
 }
 
 type consoleLogger struct {
 	debug *log.Logger
-	info *log.Logger
-	warn *log.Logger
+	info  *log.Logger
+	warn  *log.Logger
 	error *log.Logger
 }
 
-func NewConsoleLogger() *consoleLogger  {
+func NewConsoleLogger() *consoleLogger {
 	return &consoleLogger{
-		debug:log.New(os.Stdout, "[debug] ", log.LstdFlags),
-		info:log.New(os.Stdout, "[info] ", log.LstdFlags),
-		warn:log.New(os.Stdout, "[warn] ", log.LstdFlags),
-		error:log.New(os.Stdout, "[error] ", log.LstdFlags),
+		debug: log.New(os.Stdout, "[debug] ", log.LstdFlags),
+		info:  log.New(os.Stdout, "[info] ", log.LstdFlags),
+		warn:  log.New(os.Stdout, "[warn] ", log.LstdFlags),
+		error: log.New(os.Stdout, "[error] ", log.LstdFlags),
 	}
 }
 
-func(cl *consoleLogger) Debugc(category, format string, arg ...interface{}) {
+func (cl *consoleLogger) Debugf(format string, arg ...interface{}) {
 	message := fmt.Sprintf(format, arg...)
-	cl.debug.Println( category, message)
+	cl.debug.Println(message)
 }
 
-func(cl *consoleLogger) Infoc(category, format string, arg ...interface{}) {
+func (cl *consoleLogger) Infof(format string, arg ...interface{}) {
 	message := fmt.Sprintf(format, arg...)
-	cl.info.Println( category, message)
+	cl.info.Println(message)
 }
 
-func(cl *consoleLogger) Warnc(category string, err error, format string, arg ...interface{}) {
+func (cl *consoleLogger) Warnf(format string, arg ...interface{}) {
 	message := fmt.Sprintf(format, arg...)
-	if err == nil{
-		cl.warn.Println(category, message)
-	} else {
-		cl.warn.Println(category, err.Error(), message)
-	}
+	cl.warn.Println(message)
 }
 
-func(cl *consoleLogger) Errorc(category string, err error, format string, arg ...interface{}) {
+func (cl *consoleLogger) Errorf(format string, arg ...interface{}) {
 	message := fmt.Sprintf(format, arg...)
-	cl.error.Println(category, err.Error(), message)
+	cl.error.Println(message)
 }
