@@ -1,6 +1,7 @@
 package channelx
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"testing"
@@ -8,13 +9,13 @@ import (
 
 func TestRunInParallel(t *testing.T) {
 	t.Run("normal case", func(t *testing.T) {
-		worker := func(input interface{}) (interface{}, error) {
+		worker := func(ctx context.Context, input interface{}) (interface{}, error) {
 			num := input.(int)
 			return num+1, nil
 		}
 
 		inputs := []interface{}{1,2,3,4,5}
-		outputs, err := RunInParallel(inputs, worker, 4)
+		outputs, err := RunInParallel(context.Background(), inputs, worker, 4)
 
 		if err != nil {
 			t.Fail()
@@ -25,7 +26,7 @@ func TestRunInParallel(t *testing.T) {
 
 	t.Run("if has error ", func(t *testing.T) {
 		fakeErr := errors.New("fake error")
-		worker := func(input interface{}) (interface{}, error) {
+		worker := func(ctx context.Context, input interface{}) (interface{}, error) {
 			num := input.(int)
 			if num % 2 == 0 {
 				return input, fakeErr
@@ -35,7 +36,8 @@ func TestRunInParallel(t *testing.T) {
 		}
 
 		inputs := []interface{}{1,1,1,1,4}
-		_, err := RunInParallel(inputs, worker, 4)
+		ctx := context.Background()
+		_, err := RunInParallel(ctx, inputs, worker, 4)
 
 		if err != fakeErr {
 			t.Fail()
