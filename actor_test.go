@@ -1,12 +1,14 @@
-package channelx
+package channelx_test
 
 import (
 	"testing"
 	"time"
+
+	"github.com/Ksloveyuan/channelx"
 )
 
 func TestActorBasic(t *testing.T) {
-	actor := NewActor(SetActorBuffer(1))
+	actor := channelx.NewActor(channelx.SetActorBuffer(1))
 	defer actor.Close()
 
 	promise := actor.Do(func() (interface{}, error) {
@@ -26,7 +28,7 @@ func TestActorBasic(t *testing.T) {
 }
 
 func TestActorAsQueue(t *testing.T) {
-	actor := NewActor()
+	actor := channelx.NewActor()
 	defer actor.Close()
 
 	i := 0

@@ -1,13 +1,15 @@
-package channelx
+package channelx_test
 
 import (
 	"errors"
 	"testing"
 	"time"
+
+	"github.com/Ksloveyuan/channelx"
 )
 
 func TestPromise(t *testing.T) {
-	promise := NewPromise(func() (interface{}, error) {
+	promise := channelx.NewPromise(func() (interface{}, error) {
 		time.Sleep(1 * time.Second)
 		return 1, nil
 	})
@@ -19,7 +21,7 @@ func TestPromise(t *testing.T) {
 }
 
 func TestPromise_ThenSuccess(t *testing.T) {
-	promise := NewPromise(func() (interface{}, error) {
+	promise := channelx.NewPromise(func() (interface{}, error) {
 		time.Sleep(1 * time.Second)
 		return 1, nil
 	}).ThenSuccess(func(input interface{}) (interface{}, error) {
@@ -34,7 +36,7 @@ func TestPromise_ThenSuccess(t *testing.T) {
 }
 
 func TestPromise_ThenError(t *testing.T) {
-	promise := NewPromise(func() (interface{}, error) {
+	promise := channelx.NewPromise(func() (interface{}, error) {
 		time.Sleep(1 * time.Second)
 		return nil, errors.New("test")
 	}).ThenError(func(err error) interface{} {
@@ -51,7 +53,7 @@ func TestPromise_ThenError(t *testing.T) {
 }
 
 func TestPromise_Then(t *testing.T) {
-	promise := NewPromise(func() (interface{}, error) {
+	promise := channelx.NewPromise(func() (interface{}, error) {
 		time.Sleep(1 * time.Second)
 		return 1, nil
 	}).Then(func(input interface{}) (interface{}, error) {
