@@ -5,6 +5,7 @@
 package channelx_mock
 
 import (
+	context "context"
 	channelx "github.com/Ksloveyuan/channelx"
 	gomock "github.com/golang/mock/gomock"
 	reflect "reflect"
@@ -71,17 +72,17 @@ func (m *MockEventHandler) EXPECT() *MockEventHandlerMockRecorder {
 }
 
 // OnEvent mocks base method
-func (m *MockEventHandler) OnEvent(event channelx.Event) error {
+func (m *MockEventHandler) OnEvent(ctx context.Context, event channelx.Event) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "OnEvent", event)
+	ret := m.ctrl.Call(m, "OnEvent", ctx, event)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // OnEvent indicates an expected call of OnEvent
-func (mr *MockEventHandlerMockRecorder) OnEvent(event interface{}) *gomock.Call {
+func (mr *MockEventHandlerMockRecorder) OnEvent(ctx, event interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OnEvent", reflect.TypeOf((*MockEventHandler)(nil).OnEvent), event)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OnEvent", reflect.TypeOf((*MockEventHandler)(nil).OnEvent), ctx, event)
 }
 
 // Logger mocks base method

@@ -10,7 +10,6 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-
 //EventBus ...
 type EventBus struct {
 	started  bool
@@ -25,6 +24,7 @@ type EventBus struct {
 	eventJobQueue  chan EventJob
 	autoRetryTimes int
 	retryInterval  time.Duration
+	timeout        time.Duration
 
 	runningTasks *int64
 }
@@ -36,22 +36,20 @@ type EventJob struct {
 	resultChan chan JobStatus
 }
 
-
 //NewEventBus ...
 func NewEventBus(
 	logger Logger,
-	hostName string,
 	chanBuffer,
-	eventWorkers,  autoRetryTimes int,
-	retryInterval time.Duration,
+	eventWorkers, autoRetryTimes int,
+	retryInterval, timeout time.Duration,
 ) *EventBus {
 	runningTasks := int64(0)
 	return &EventBus{
 		logger:         logger,
-		hostName:       hostName,
 		eventWorkers:   eventWorkers,
 		autoRetryTimes: autoRetryTimes,
 		retryInterval:  retryInterval,
+		timeout:        timeout,
 
 		handlers:      make(map[EventID][]EventHandler),
 		eventJobQueue: make(chan EventJob, chanBuffer),
@@ -106,17 +104,18 @@ loop:
 			}
 			eb.logger.Debugf("event start to run, eventID is %d", job.event.ID())
 
+			ctx, cancel := context.WithTimeout(context.Background(), eb.timeout)
 			if len(job.handlers) > 1 {
-				g, _ := errgroup.WithContext(context.Background())
+				g, _ := errgroup.WithContext(ctx)
 				for index := range job.handlers {
 					handler := job.handlers[index]
 					g.Go(func() error {
-						return eb.runHandler(handler, job.event)
+						return eb.runHandler(ctx, handler, job.event)
 					})
 				}
 				jobStatus.Err = g.Wait()
 			} else if len(job.handlers) == 1 {
-				jobStatus.Err = eb.runHandler(job.handlers[0], job.event)
+				jobStatus.Err = eb.runHandler(ctx, job.handlers[0], job.event)
 			}
 
 			if jobStatus.Err != nil {
@@ -137,6 +136,7 @@ loop:
 
 			eb.logger.Debugf("event result is sent, eventID is %d", job.event.ID())
 			atomic.AddInt64(eb.runningTasks, -1)
+			cancel()
 		case <-eb.quit:
 			if eb.anyPendingTask() {
 				continue loop
@@ -149,7 +149,7 @@ loop:
 	}
 }
 
-func (eb *EventBus) runHandler(handler EventHandler, event Event) (err error) {
+func (eb *EventBus) runHandler(ctx context.Context, handler EventHandler, event Event) (err error) {
 	var (
 		retryDuration = eb.retryInterval
 	)
@@ -166,7 +166,7 @@ func (eb *EventBus) runHandler(handler EventHandler, event Event) (err error) {
 			eb.logger.Infof("start to retry event handler %T with event %T, times(%d), last error(%v)", handler, event, i, err)
 		}
 
-		if err = handler.OnEvent(event); err == nil {
+		if err = handler.OnEvent(ctx, event); err == nil {
 			break
 		}
 

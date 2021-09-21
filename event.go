@@ -1,6 +1,7 @@
 package channelx
 
 import (
+	"context"
 	"time"
 )
 
@@ -31,7 +32,7 @@ type Event interface {
 
 //EventHandler ...
 type EventHandler interface {
-	OnEvent(event Event) error
+	OnEvent(ctx context.Context, event Event) error
 	Logger() Logger
 	CanAutoRetry(err error) bool
 }
