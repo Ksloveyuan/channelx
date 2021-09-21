@@ -4,13 +4,43 @@
 [![codecov](https://codecov.io/gh/Ksloveyuan/channelx/branch/master/graph/badge.svg)](https://codecov.io/gh/Ksloveyuan/channelx)
 [![GoDoc](https://godoc.org/github.com/Ksloveyuan/channelx?status.svg)](https://godoc.org/github.com/Ksloveyuan/channelx)
 
-Some useful tools implemented by channel to increase development efficiency, e.g. stream, promise, actor, parallel runner, aggregator, etc..
+Some useful tools implemented by channel to increase development efficiency, e.g. event bus, stream, promise, actor, parallel runner, aggregator, etc..
 
 # blogs
 - [如何把Golang的channel用的如nodejs的stream一样丝滑](https://juejin.im/post/5d7ba76ef265da03be490856)
 - [如何用Golang的channel实现消息的批量处理](https://juejin.im/post/5d8c6775e51d45781332e91f)
-- [如何把golang的Channel玩出async和await的feel](https://juejin.im/post/5e4175a36fb9a07ca80a9c77)
+- [如何把Golang的Channel玩出async和await的feel](https://juejin.im/post/5e4175a36fb9a07ca80a9c77)
 - [下次想在Golang中写个并发处理，就用这个模板，准没错！](https://juejin.cn/post/6959369791937347621/)
+- [玩转Golang的channel，二百行代码实现PubSub模式](https://juejin.cn/post/7010383321674809352)
+
+## Parallel runner
+A simple util to run tasks in parallel
+```golang
+worker := func(ctx context.Context, input interface{}) (interface{}, error) {
+    num := input.(int)
+    return num+1, nil
+}
+
+inputs := []interface{}{1,2,3,4,5}
+outputs, err := channelx.RunInParallel(context.Background(), inputs, worker, 4)
+```
+more examples, please check [parallel_runner_test.go](https://github.com/Ksloveyuan/channelx/blob/master/parallel_runner_test.go)
+
+### EventBus
+A PubSub pattern util
+
+```golang
+logger := channelx.NewConsoleLogger()
+eventBus := channelx.NewEventBus(logger,  4,4,2, time.Second, 5 * time.Second)
+eventBus.Start()
+
+handler := NewExampleHandler(logger)
+eventBus.Subscribe(ExampleEventID, handler)
+eventBus.Publish(NewExampleEvent())
+
+eventBus.Stop()
+```
+more details, please check [event_bus_test.go#TestEventBus_Example](https://github.com/Ksloveyuan/channelx/blob/master/event_bus_test.go#L103)
 
 ## Promise
 A golang style async/await, even I call it Promise, while the api is not 100% aligns with Javascript Promise.
@@ -31,7 +61,7 @@ res, _ := promise.Done()
 more examples, please check [promise_test.go](https://github.com/Ksloveyuan/channelx/blob/master/promise_test.go)
 
 ## Actor
-The actor pattern is also called as Active Object, it seems like Promise, but the difference is Actor can be reused and it is FIFO.
+The actor pattern is also called as Active Object, it seems like Promise, but the difference is Actor can be reused, and it is FIFO.
 
 ```golang
 actor := NewActor(SetActorBuffer(0))
